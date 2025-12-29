@@ -52,6 +52,7 @@ class Setting(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     quality = Column(Enum("high", "medium", "low", "audio", "custom"), nullable=False, default="high")
     format = Column(Enum("video", "audio", "document"), nullable=False, default="video")
+    language = Column(Enum("en", "zh"), nullable=False, default="en")
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     user = relationship("User", back_populates="settings")
@@ -121,6 +122,14 @@ def get_format_settings(tgid) -> Literal["video", "audio", "document"]:
         if user and user.settings:
             return user.settings.format
         return "video"
+
+
+def get_language_settings(tgid) -> Literal["en", "zh"]:
+    with session_manager() as session:
+        user = session.query(User).filter(User.user_id == tgid).first()
+        if user and user.settings:
+            return user.settings.language
+        return "en"
 
 
 def set_user_settings(tgid: int, key: str, value: str):

@@ -29,3 +29,18 @@ class Redis:
 
     def get_cache(self, k: str):
         return self.r.hgetall(k)
+
+    def store_pending_download(self, chat_id: int, msg_id: int, url: str):
+        """存储待选择格式的下载URL，5分钟过期"""
+        key = f"pending:{chat_id}:{msg_id}"
+        self.r.setex(key, 300, url)
+
+    def get_pending_download(self, chat_id: int, msg_id: int) -> str | None:
+        """获取待处理的下载URL"""
+        key = f"pending:{chat_id}:{msg_id}"
+        return self.r.get(key)
+
+    def delete_pending_download(self, chat_id: int, msg_id: int):
+        """删除待处理的下载记录"""
+        key = f"pending:{chat_id}:{msg_id}"
+        self.r.delete(key)

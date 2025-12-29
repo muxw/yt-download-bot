@@ -22,6 +22,50 @@ def match_filter(info_dict):
 
 
 class YoutubeDownload(BaseDownloader):
+    def get_available_formats(self) -> list[dict]:
+        """使用 yt-dlp extract_info 获取视频可用格式列表"""
+        ydl_opts = {
+            "quiet": True,
+            "no_warnings": True,
+        }
+        # setup cookies for youtube
+        if is_youtube(self._url):
+            if browsers := os.getenv("BROWSERS"):
+                ydl_opts["cookiesfrombrowser"] = browsers.split(",")
+            if os.path.isfile("youtube-cookies.txt") and os.path.getsize("youtube-cookies.txt") > 100:
+                ydl_opts["cookiefile"] = "youtube-cookies.txt"
+            if potoken := os.getenv("POTOKEN"):
+                ydl_opts["extractor_args"] = {"youtube": ["player-client=web,default", f"po_token=web+{potoken}"]}
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(self._url, download=False)
+
+        # 过滤并整理格式信息
+        formats = []
+        for f in info.get("formats", []):
+            height = f.get("height")
+            vcodec = f.get("vcodec", "none")
+            # 只保留有视频的格式
+            if height and vcodec != "none":
+                filesize = f.get("filesize") or f.get("filesize_approx", 0)
+                formats.append({
+                    "format_id": f["format_id"],
+                    "height": height,
+                    "ext": f.get("ext", "mp4"),
+                    "filesize": filesize,
+                    "vcodec": vcodec,
+                })
+
+        # 去重并按分辨率排序（只保留每个分辨率的最佳格式）
+        seen = set()
+        unique_formats = []
+        for f in sorted(formats, key=lambda x: (x["height"], x["filesize"] or 0), reverse=True):
+            if f["height"] not in seen:
+                seen.add(f["height"])
+                unique_formats.append(f)
+
+        return unique_formats[:6]  # 最多返回6个选项
+
     @staticmethod
     def get_format(m):
         return [
@@ -134,12 +178,13 @@ class YoutubeDownload(BaseDownloader):
 
         return files
 
-    def _start(self, formats=None):
+    def _start(self, user_format_id=None):
         # start download and upload, no cache hit
         # user can choose format by clicking on the button(custom config)
-        default_formats = self._setup_formats()
-        if formats is not None:
-            # formats according to user choice
-            default_formats = formats + self._setup_formats()
-        self._download(default_formats)
+        if user_format_id:
+            # 用户选择了特定格式，使用 format_id+bestaudio 组合
+            formats = [f"{user_format_id}+bestaudio/best"]
+        else:
+            formats = self._setup_formats()
+        self._download(formats)
         self._upload()

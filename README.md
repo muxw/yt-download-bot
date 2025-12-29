@@ -1,10 +1,30 @@
 # ytdlbot
 
+> **This is a fork of [tgbot-collection/ytdlbot](https://github.com/tgbot-collection/ytdlbot) with additional features.**
+
 [![docker image](https://github.com/tgbot-collection/ytdlbot/actions/workflows/builder.yaml/badge.svg)](https://github.com/tgbot-collection/ytdlbot/actions/workflows/builder.yaml)
 
 **YouTube Download Bot🚀🎬⬇️**
 
 This Telegram bot allows you to download videos from YouTube and [other supported websites](#supported-websites).
+
+## New Features in This Fork
+
+### 🌍 Multi-language Support (中文/English)
+- Users can switch between Chinese and English in `/settings`
+- All bot messages support both languages
+
+### 🎬 Resolution Selection
+- When sending a video link, bot will analyze available resolutions
+- Shows resolution options with estimated file size
+- Users can choose preferred quality before downloading
+
+### 🔗 Auto URL Extraction
+- Automatically extracts URLs from messages containing other text
+- Supports forwarded messages with links
+- Example: "Please download this video https://youtube.com/xxx thanks" → extracts the URL
+
+---
 
 # Usage
 

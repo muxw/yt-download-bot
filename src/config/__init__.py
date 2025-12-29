@@ -11,6 +11,7 @@ load_dotenv()
 
 from config.config import *
 from config.constant import *
+from config.i18n import get_text, translate_setting, get_language_name
 
 logging.basicConfig(
     level=logging.INFO,

@@ -179,3 +179,16 @@ reinforcement/*
 /ytdlbot/main.session-journal
 /src/main.session
 /src/main.session-journal
+
+# Local database
+*.db
+*.db-journal
+ytdlbot.db
+
+# Cookies
+*-cookies.txt
+youtube-cookies.txt
+
+# Bot logs
+bot.log
+*.log
