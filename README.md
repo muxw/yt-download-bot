@@ -193,34 +193,6 @@ https://krakenfiles.com/view/oqmSTF0T5t/file.html
 
 </details>
 
-# Donation
-
-Found this bot useful? You can donate to support the development of this bot.
-
-## Donation Platforms
-
-* [Buy me a coffee](https://www.buymeacoffee.com/bennythink)
-* [GitHub Sponsor](https://github.com/sponsors/BennyThink)
-
-## Stripe
-
-You can choose to donate via Stripe.
-
-| USD(Card, Apple Pay and Google Pay)              | CNY(Card, Apple Pay, Google Pay and Alipay)      |
-|--------------------------------------------------|--------------------------------------------------|
-| [USD](https://buy.stripe.com/cN203sdZB98RevC3cd) | [CNY](https://buy.stripe.com/dR67vU4p13Ox73a6oq) |
-| ![](assets/USD.png)                              | ![](assets/CNY.png)                              |
-
-## Cryptocurrency
-
-TRX or USDT(TRC20)
-
-![](assets/tron.png)
-
-```
-TF9peZjC2FYjU4xNMPg3uP4caYLJxtXeJS
-```
-
 # License
 
 Apache License 2.0
