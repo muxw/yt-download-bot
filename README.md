@@ -1,5 +1,7 @@
 # ytdlbot
 
+**[English](README.md)** | **[中文](README_CN.md)**
+
 > **This is a fork of [tgbot-collection/ytdlbot](https://github.com/tgbot-collection/ytdlbot) with additional features.**
 
 [![docker image](https://github.com/tgbot-collection/ytdlbot/actions/workflows/builder.yaml/badge.svg)](https://github.com/tgbot-collection/ytdlbot/actions/workflows/builder.yaml)
