@@ -421,11 +421,14 @@ def download_handler(client: Client, message: types.Message):
                 buttons = []
                 for f in formats:
                     size_str = sizeof_fmt(f["filesize"]) if f["filesize"] else get_text("unknown_size", lang)
-                    label = f"{f['height']}p ({size_str})"
-                    # callback_data 格式: fmt_{format_id}_{msg_id}
+                    # 显示: 分辨率 | 编码 | 格式 | 大小
+                    vcodec = f.get("vcodec", "unknown")[:8]  # 限制编码名称长度
+                    ext = f.get("ext", "mp4").upper()
+                    label = f"{f['height']}p | {vcodec} | {ext} | {size_str}"
+                    # callback_data 格式: fmt_{format_id}_{height}_{msg_id}
                     buttons.append(types.InlineKeyboardButton(
                         label,
-                        callback_data=f"fmt_{f['format_id']}_{bot_msg.id}"
+                        callback_data=f"fmt_{f['format_id']}_{f['height']}_{bot_msg.id}"
                     ))
 
                 # 每行2个按钮
@@ -524,14 +527,17 @@ def resolution_selection_callback(client: Client, callback_query: types.Callback
     data = callback_query.data
     lang = get_language_settings(chat_id)
 
-    # 解析 callback_data: fmt_{format_id}_{msg_id}
+    # 解析 callback_data: fmt_{format_id}_{height}_{msg_id}
+    # format_id 可能包含下划线，height 和 msg_id 是数字
     parts = data.split("_")
-    if len(parts) < 3:
+    if len(parts) < 4:
         callback_query.answer("Invalid selection")
         return
 
-    format_id = parts[1]
-    msg_id = int(parts[2])
+    msg_id = int(parts[-1])  # 最后一个是 msg_id
+    height = int(parts[-2])  # 倒数第二个是 height
+    format_id = "_".join(parts[1:-2])  # 中间所有部分是 format_id
+    logging.info(f"User selected format_id: {format_id}, height: {height}p for msg_id: {msg_id}")
 
     # 从 Redis 获取存储的 URL
     redis = Redis()
@@ -552,12 +558,25 @@ def resolution_selection_callback(client: Client, callback_query: types.Callback
 
     try:
         client.send_chat_action(chat_id, enums.ChatAction.UPLOAD_VIDEO)
-        # 使用用户选择的格式下载
+        # 使用用户选择的格式下载（优先使用 height 限制）
         downloader = YoutubeDownload(client, bot_msg, url)
-        downloader._start(user_format_id=format_id)
+        downloader._start(user_format_id=format_id, user_height=height)
     except Exception as e:
         logging.error("Download failed", exc_info=True)
         bot_msg.edit_text(f"❌ {get_text('download_failed', lang)}: {e}")
+
+
+def start_web_server():
+    """Start FastAPI web server in a separate thread"""
+    import uvicorn
+    from web.app import app as fastapi_app
+
+    # Get port from environment or use default
+    port = int(os.getenv("WEB_PORT", "8000"))
+    host = os.getenv("WEB_HOST", "0.0.0.0")
+
+    logging.info(f"Starting web server on {host}:{port}")
+    uvicorn.run(fastapi_app, host=host, port=port, log_level="info")
 
 
 if __name__ == "__main__":
@@ -571,7 +590,19 @@ if __name__ == "__main__":
  ▌  ▌ ▌ ▌ ▌  ▌  ▌ ▌ ▌ ▌ ▛▀  ▌ ▌ ▌ ▌ ▐▐▐  ▌ ▌ ▐  ▌ ▌ ▞▀▌ ▌ ▌
  ▘  ▝▀  ▝▀▘  ▘  ▝▀▘ ▀▀  ▝▀▘ ▀▀  ▝▀   ▘▘  ▘ ▘  ▘ ▝▀  ▝▀▘ ▝▀▘
 
-By @BennyThink, VIP Mode: {ENABLE_VIP} 
+By @BennyThink, VIP Mode: {ENABLE_VIP}
+Web Server: http://0.0.0.0:{os.getenv("WEB_PORT", "8000")}
     """
     print(banner)
+
+    # Check if web server should be enabled
+    enable_web = os.getenv("ENABLE_WEB", "true").lower() in ("true", "1", "yes")
+
+    if enable_web:
+        # Start web server in a separate thread
+        web_thread = threading.Thread(target=start_web_server, daemon=True)
+        web_thread.start()
+        logging.info("Web server started in background thread")
+
+    # Run Telegram bot (blocking)
     app.run()

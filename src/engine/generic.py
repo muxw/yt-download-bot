@@ -40,14 +40,25 @@ class YoutubeDownload(BaseDownloader):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(self._url, download=False)
 
+        # 获取视频时长用于估算文件大小
+        duration = info.get("duration", 0)
+
         # 过滤并整理格式信息
         formats = []
         for f in info.get("formats", []):
             height = f.get("height")
             vcodec = f.get("vcodec", "none")
+            format_id = f.get("format_id", "")
+            protocol = f.get("protocol", "")
+
             # 只保留有视频的格式
             if height and vcodec != "none":
                 filesize = f.get("filesize") or f.get("filesize_approx", 0)
+                # 如果没有文件大小，尝试通过比特率和时长估算
+                if not filesize and duration:
+                    tbr = f.get("tbr", 0)  # 总比特率 kbps
+                    if tbr:
+                        filesize = int(tbr * 1000 / 8 * duration)  # 估算字节数
                 formats.append({
                     "format_id": f["format_id"],
                     "height": height,
@@ -64,7 +75,9 @@ class YoutubeDownload(BaseDownloader):
                 seen.add(f["height"])
                 unique_formats.append(f)
 
-        return unique_formats[:6]  # 最多返回6个选项
+        result = unique_formats[:6]  # 最多返回6个选项
+        logging.info(f"Available formats: {[(f['format_id'], f['height']) for f in result]}")
+        return result
 
     @staticmethod
     def get_format(m):
@@ -168,23 +181,42 @@ class YoutubeDownload(BaseDownloader):
             formats = ["source"] + formats
 
         files = None
+        last_error = None
         for f in formats:
             ydl_opts["format"] = f
             logging.info("yt-dlp options: %s", ydl_opts)
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([self._url])
-            files = list(Path(self._tempdir.name).glob("*"))
-            break
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    ydl.download([self._url])
+                files = list(Path(self._tempdir.name).glob("*"))
+                if files:
+                    break  # 下载成功，退出循环
+            except Exception as e:
+                logging.warning(f"Format {f} failed: {e}, trying next format...")
+                last_error = e
+                continue
+
+        if not files and last_error:
+            raise last_error
 
         return files
 
-    def _start(self, user_format_id=None):
+    def _start(self, user_format_id=None, user_height=None):
         # start download and upload, no cache hit
         # user can choose format by clicking on the button(custom config)
-        if user_format_id:
-            # 用户选择了特定格式，使用 format_id+bestaudio 组合
-            formats = [f"{user_format_id}+bestaudio/best"]
+        if user_height:
+            # 使用 <=? 可选过滤器，如果没有匹配格式会自动 fallback
+            # 参考: https://github.com/yt-dlp/yt-dlp#format-selection
+            formats = [
+                f"bestvideo[height<=?{user_height}]+bestaudio/best[height<=?{user_height}]"
+            ]
+            logging.info(f"Using user-selected height: {user_height}p")
+        elif user_format_id:
+            # 用户选择了特定格式
+            formats = [f"{user_format_id}+bestaudio", user_format_id]
+            logging.info(f"Using user-selected format: {formats}")
         else:
             formats = self._setup_formats()
+            logging.info(f"Using default format settings: {formats}")
         self._download(formats)
         self._upload()

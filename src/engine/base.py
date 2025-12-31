@@ -135,7 +135,12 @@ class BaseDownloader(ABC):
 
     @debounce(5)
     def edit_text(self, text: str):
-        self._bot_msg.edit_text(text)
+        try:
+            self._bot_msg.edit_text(text)
+        except Exception as e:
+            # Ignore MESSAGE_NOT_MODIFIED error (happens when content is the same)
+            if "MESSAGE_NOT_MODIFIED" not in str(e):
+                logging.warning(f"Failed to edit message: {e}")
 
     @abstractmethod
     def _setup_formats(self) -> list | None:
